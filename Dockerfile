@@ -20,5 +20,9 @@ RUN set -x && \
 COPY --from=build /app/grpc-calculator /app/grpc-calculator
 COPY --from=datadog/serverless-init:beta2 /datadog-init /app/datadog-init
 
+ENV DD_SERVICE=grpc-calculator-ddtrace
+ENV DD_ENV=verily-test
+ENV DD_VERSION=1
+
 ENTRYPOINT ["/app/datadog-init"]
 CMD ["/app/grpc-calculator"]
