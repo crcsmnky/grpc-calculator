@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+option go_package = "github.com/crcsmnky/grpc-calculator/proto";
+
+enum Operation {
+  ADD = 0;
+  SUBTRACT = 1;
+  MULTIPLY = 2;
+  DIVIDE = 3;
+}
+
+message BinaryOperation {
+  float first_operand = 1;
+  float second_operand = 2;
+  Operation operation = 3;
+};
+
+message CalculationResult {
+  float result = 1;
+};
+
+service Calculator {
+  rpc Calculate (BinaryOperation) returns (CalculationResult);
+};
