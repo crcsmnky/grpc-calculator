@@ -6,16 +6,15 @@ import (
 	"log"
 	"net"
 	"os"
+	"time"
 
+	"github.com/crcsmnky/grpc-calculator/config"
 	pb "github.com/crcsmnky/grpc-calculator/proto"
+
 	"google.golang.org/grpc"
 
-	grpctrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/google.golang.org/grpc"
-	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
-)
-
-const (
-	serviceName = "calculator"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/otel"
 )
 
 var _ pb.CalculatorServer = (*Server)(nil)
@@ -29,36 +28,70 @@ func NewServer() *Server {
 }
 
 func (s *Server) Calculate(ctx context.Context, r *pb.BinaryOperation) (*pb.CalculationResult, error) {
-	log.Println("[server:Calculate] Started")
+	log.Printf("[server:Calculate] Started")
 	if ctx.Err() == context.Canceled {
 		return &pb.CalculationResult{}, fmt.Errorf("client cancelled: abandoning")
 	}
 
 	switch r.GetOperation() {			
 		case pb.Operation_ADD:
-			return &pb.CalculationResult{
-				Result: r.GetFirstOperand() + r.GetSecondOperand(),
-			}, nil
+			return add(ctx, r)
 		case pb.Operation_SUBTRACT:
-			return &pb.CalculationResult{
-				Result: r.GetFirstOperand() - r.GetSecondOperand(),
-			}, nil
+			return subtract(ctx, r)
 		case pb.Operation_MULTIPLY:
-			return &pb.CalculationResult{
-				Result: r.GetFirstOperand() * r.GetSecondOperand(),
-			}, nil
+			return multiply(ctx, r)
 		case pb.Operation_DIVIDE:
-			return &pb.CalculationResult{
-				Result: r.GetFirstOperand() / r.GetSecondOperand(),
-			}, nil			
+			return divide(ctx, r)
 		default:
 			return &pb.CalculationResult{}, fmt.Errorf("undefined operation")
 	}
 }
 
+func add(ctx context.Context, r *pb.BinaryOperation) (*pb.CalculationResult, error) {
+	tracer := otel.GetTracerProvider().Tracer("tracer")
+	_, span := tracer.Start(ctx, "add")
+	defer span.End()
+
+	return &pb.CalculationResult{Result: r.GetFirstOperand() + r.GetSecondOperand()}, nil
+}
+
+func subtract(ctx context.Context, r *pb.BinaryOperation) (*pb.CalculationResult, error) {
+	tracer := otel.GetTracerProvider().Tracer("tracer")
+	_, span := tracer.Start(ctx, "subtract")
+	defer span.End()
+
+	return &pb.CalculationResult{Result: r.GetFirstOperand() - r.GetSecondOperand()}, nil	
+}
+
+func multiply(ctx context.Context, r *pb.BinaryOperation) (*pb.CalculationResult, error) {
+	tracer := otel.GetTracerProvider().Tracer("tracer")
+	_, span := tracer.Start(ctx, "multiply")
+	defer span.End()
+
+	return &pb.CalculationResult{Result: r.GetFirstOperand() * r.GetSecondOperand()}, nil
+}
+
+func divide(ctx context.Context, r *pb.BinaryOperation) (*pb.CalculationResult, error) {
+	tracer := otel.GetTracerProvider().Tracer("tracer")
+	_, span := tracer.Start(ctx, "divide")
+	defer span.End()
+
+	log.Printf("working hard")
+	time.Sleep(5 * time.Second)
+
+	return &pb.CalculationResult{Result: r.GetFirstOperand() / r.GetSecondOperand()}, nil	
+}
+
 func main() {
-	tracer.Start()
-	defer tracer.Stop()
+	tp, err := config.Init()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		if err := tp.Shutdown(context.Background()); err != nil {
+			log.Printf("Error shutting down tracer provider: %v", err)
+		} 
+	}()
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -68,12 +101,9 @@ func main() {
 	grpcEndpoint := fmt.Sprintf(":%s", port)
 	log.Printf("gRPC endpoint [%s]", grpcEndpoint)
 
-	ui := grpctrace.UnaryServerInterceptor(
-		grpctrace.WithServiceName(serviceName),
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
 	)
-
-	grpcServer := grpc.NewServer(grpc.UnaryInterceptor(ui))
-	pb.RegisterCalculatorServer(grpcServer, NewServer())
 
 	listen, err := net.Listen("tcp", grpcEndpoint)
 	if err != nil {
