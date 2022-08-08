@@ -3,12 +3,11 @@ FROM golang:1.18-buster as build
 WORKDIR /app
 
 COPY go.mod go.sum ./
-COPY proto/ ./proto/
-COPY server/ ./server/
-
 RUN go mod download
 
-RUN go build -v -o grpc-calculator github.com/crcsmnky/grpc-calculator/server
+COPY . ./
+
+RUN GO111MODULE=on go build -v -o grpc-calculator github.com/crcsmnky/grpc-calculator/server
 
 FROM debian:buster-slim
 
@@ -19,6 +18,13 @@ RUN set -x && \
 
 COPY --from=build /app/grpc-calculator /app/grpc-calculator
 COPY --from=datadog/serverless-init:beta2 /datadog-init /app/datadog-init
+
+ENV DD_SERVICE=grpc-calculator-otel
+ENV DD_ENV=verily-prodeng-test
+ENV DD_VERSION=1
+
+ENV DD_OTLP_CONFIG_RECEIVER_PROTOCOLS_GRPC_ENDPOINT=0.0.0.0:4317
+ENV OTEL_EXPORTER_OTLP_ENDPOINT=localhost:4317
 
 ENTRYPOINT ["/app/datadog-init"]
 CMD ["/app/grpc-calculator"]
