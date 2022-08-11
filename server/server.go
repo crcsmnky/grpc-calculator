@@ -29,10 +29,13 @@ func NewServer() *Server {
 }
 
 func (s *Server) Calculate(ctx context.Context, r *pb.BinaryOperation) (*pb.CalculationResult, error) {
-	log.Println("[server:Calculate] Started")
+	log.Printf("[server:Calculate] Started")
 	if ctx.Err() == context.Canceled {
 		return &pb.CalculationResult{}, fmt.Errorf("client cancelled: abandoning")
 	}
+
+	span, _ := tracer.StartSpanFromContext(ctx, r.GetOperation().String())
+	defer span.Finish()
 
 	switch r.GetOperation() {			
 		case pb.Operation_ADD:
@@ -57,7 +60,7 @@ func (s *Server) Calculate(ctx context.Context, r *pb.BinaryOperation) (*pb.Calc
 }
 
 func main() {
-	tracer.Start()
+	tracer.Start(tracer.WithDebugMode(true))
 	defer tracer.Stop()
 
 	port := os.Getenv("PORT")
