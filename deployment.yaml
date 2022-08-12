@@ -18,7 +18,7 @@ spec:
           - name: DD_SITE
             value: "us5.datadoghq.com"
           - name: DD_API_KEY
-            value: "93c89204584b4ce2a1e0a35fd5a6a49d"
+            value: "IM AN API KEY OVERWRITE ME"
           - name: DD_SERVICE
             value: "grpc-calculator-ddtrace"
           - name: DD_ENV
