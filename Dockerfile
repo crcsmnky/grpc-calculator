@@ -25,3 +25,5 @@ ENV DD_VERSION=1
 
 ENTRYPOINT ["/app/datadog-init"]
 CMD ["/app/grpc-calculator"]
+
+# ENTRYPOINT ["/app/grpc-calculator"]

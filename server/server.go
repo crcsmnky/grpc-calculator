@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"time"
 
 	pb "github.com/crcsmnky/grpc-calculator/proto"
 	"google.golang.org/grpc"
@@ -34,29 +35,55 @@ func (s *Server) Calculate(ctx context.Context, r *pb.BinaryOperation) (*pb.Calc
 		return &pb.CalculationResult{}, fmt.Errorf("client cancelled: abandoning")
 	}
 
-	span, _ := tracer.StartSpanFromContext(ctx, r.GetOperation().String())
+	span, _ := tracer.StartSpanFromContext(ctx, "Calculate")
 	defer span.Finish()
 
 	switch r.GetOperation() {			
 		case pb.Operation_ADD:
-			return &pb.CalculationResult{
-				Result: r.GetFirstOperand() + r.GetSecondOperand(),
-			}, nil
+			return add(ctx, r)
 		case pb.Operation_SUBTRACT:
-			return &pb.CalculationResult{
-				Result: r.GetFirstOperand() - r.GetSecondOperand(),
-			}, nil
+			return subtract(ctx, r)
 		case pb.Operation_MULTIPLY:
-			return &pb.CalculationResult{
-				Result: r.GetFirstOperand() * r.GetSecondOperand(),
-			}, nil
+			time.Sleep(125 * time.Millisecond)
+			return multiply(ctx, r)
 		case pb.Operation_DIVIDE:
-			return &pb.CalculationResult{
-				Result: r.GetFirstOperand() / r.GetSecondOperand(),
-			}, nil			
+			time.Sleep(250 * time.Millisecond)
+			return divide(ctx, r)
 		default:
 			return &pb.CalculationResult{}, fmt.Errorf("undefined operation")
 	}
+}
+
+func add(ctx context.Context, r *pb.BinaryOperation) (*pb.CalculationResult, error) {
+	span, _ := tracer.StartSpanFromContext(ctx, r.GetOperation().String())
+	defer span.Finish()
+
+	return &pb.CalculationResult{Result: r.GetFirstOperand() + r.GetSecondOperand()}, nil
+}
+
+func subtract(ctx context.Context, r *pb.BinaryOperation) (*pb.CalculationResult, error) {
+	span, _ := tracer.StartSpanFromContext(ctx, r.GetOperation().String())
+	defer span.Finish()
+
+	return &pb.CalculationResult{Result: r.GetFirstOperand() - r.GetSecondOperand()}, nil
+}
+
+func multiply(ctx context.Context, r *pb.BinaryOperation) (*pb.CalculationResult, error) {
+	span, _ := tracer.StartSpanFromContext(ctx, r.GetOperation().String())
+	defer span.Finish()
+
+	time.Sleep(125 * time.Millisecond)
+
+	return &pb.CalculationResult{Result: r.GetFirstOperand() * r.GetSecondOperand()}, nil
+}
+
+func divide(ctx context.Context, r *pb.BinaryOperation) (*pb.CalculationResult, error) {
+	span, _ := tracer.StartSpanFromContext(ctx, r.GetOperation().String())
+	defer span.Finish()
+
+	time.Sleep(250 * time.Millisecond)
+
+	return &pb.CalculationResult{Result: r.GetFirstOperand() + r.GetSecondOperand()}, nil
 }
 
 func main() {
