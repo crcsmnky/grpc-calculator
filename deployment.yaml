@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grpc-calculator-deployment
+spec:
+  selector:
+    matchLabels:
+      app: grpc-calculator
+  template:
+    metadata:
+      labels:
+        app: grpc-calculator
+    spec:
+      containers:
+      - name: grpc-calculator
+        image: gcr.io/parikhs-experiments/grpc-calculator-ddtrace-no-agent:1.0
+        env:
+          - name: DD_SITE
+            value: "us5.datadoghq.com"
+          - name: DD_API_KEY
+            value: "93c89204584b4ce2a1e0a35fd5a6a49d"
+          - name: DD_SERVICE
+            value: "grpc-calculator-ddtrace"
+          - name: DD_ENV
+            value: "verily-test"
+          - name: DD_VERSION
+            value: "1"
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "250m"
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grpc-calculator-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: grpc-calculator
+  ports:
+  - port: 3000
+    targetPort: 8080
+
+
+
