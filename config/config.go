@@ -2,6 +2,8 @@ package config
 
 import (
 	"context"
+	"log"
+	"os"
 
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel"
@@ -29,6 +31,22 @@ func Init() (*sdktrace.TracerProvider, error) {
 		return nil, err
 	}
 
+	// var traceExporter sdktrace.SpanExporter
+
+	// grpcEndpoint := "localhost:4317"
+	grpcEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	
+	log.Printf("setting up gRPC endpoint: %s", grpcEndpoint)
+	traceExporter, err := otlptracegrpc.New(ctx,
+		otlptracegrpc.WithInsecure(),
+		otlptracegrpc.WithEndpoint(grpcEndpoint),
+		// otlptracegrpc.WithDialOption(grpc.with),
+	)
+
+	if err != nil {
+		log.Fatalf("%s: %v", "failed to create trace exporter", err)
+	}
+
 	resources := resource.NewWithAttributes(
 		semconv.SchemaURL,
 		semconv.ServiceNameKey.String(serviceName),
@@ -36,14 +54,17 @@ func Init() (*sdktrace.TracerProvider, error) {
 		semconv.ServiceInstanceIDKey.String(uuid.New().String()),
 	)
 
+	bsp := sdktrace.NewBatchSpanProcessor(traceExporter)
 	tracerProvider := sdktrace.NewTracerProvider(
 		sdktrace.WithSampler(sdktrace.AlwaysSample()),
 		sdktrace.WithBatcher(exporter),
 		sdktrace.WithResource(resources),
+		sdktrace.WithSpanProcessor(bsp),
 	)
 
 	otel.SetTracerProvider(tracerProvider)
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
+	otel.SetTextMapPropagator(propagation.TraceContext{})
+	// otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 
-	return tracerProvider, nil
+	return tracerProvider, err
 }

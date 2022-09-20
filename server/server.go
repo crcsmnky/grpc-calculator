@@ -39,8 +39,10 @@ func (s *Server) Calculate(ctx context.Context, r *pb.BinaryOperation) (*pb.Calc
 		case pb.Operation_SUBTRACT:
 			return subtract(ctx, r)
 		case pb.Operation_MULTIPLY:
+			time.Sleep(125 * time.Millisecond)
 			return multiply(ctx, r)
 		case pb.Operation_DIVIDE:
+			time.Sleep(250 * time.Millisecond)
 			return divide(ctx, r)
 		default:
 			return &pb.CalculationResult{}, fmt.Errorf("undefined operation")
@@ -68,6 +70,9 @@ func multiply(ctx context.Context, r *pb.BinaryOperation) (*pb.CalculationResult
 	_, span := tracer.Start(ctx, "multiply")
 	defer span.End()
 
+	time.Sleep(125 * time.Millisecond)
+	log.Printf("multiplication is fun!")
+
 	return &pb.CalculationResult{Result: r.GetFirstOperand() * r.GetSecondOperand()}, nil
 }
 
@@ -76,19 +81,21 @@ func divide(ctx context.Context, r *pb.BinaryOperation) (*pb.CalculationResult, 
 	_, span := tracer.Start(ctx, "divide")
 	defer span.End()
 
-	log.Printf("working hard")
+	time.Sleep(250 * time.Millisecond)
+	log.Printf("division is tough")
+
 	time.Sleep(5 * time.Second)
 
 	return &pb.CalculationResult{Result: r.GetFirstOperand() / r.GetSecondOperand()}, nil	
 }
 
 func main() {
-	tp, err := config.Init()
+	tracerProvider, err := config.Init()
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer func() {
-		if err := tp.Shutdown(context.Background()); err != nil {
+		if err := tracerProvider.Shutdown(context.Background()); err != nil {
 			log.Printf("Error shutting down tracer provider: %v", err)
 		} 
 	}()
@@ -104,6 +111,7 @@ func main() {
 	grpcServer := grpc.NewServer(
 		grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
 	)
+	pb.RegisterCalculatorServer(grpcServer, NewServer())
 
 	listen, err := net.Listen("tcp", grpcEndpoint)
 	if err != nil {
