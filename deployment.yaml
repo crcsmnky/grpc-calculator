@@ -10,7 +10,6 @@ spec:
     metadata:
       labels:
         app: grpc-calc
-        admission.datadoghq.com/enabled: "true"
     spec:
       containers:
       - name: grpc-calc
@@ -23,14 +22,14 @@ spec:
           #       key: key
           # - name: DD_SITE
           #   value: "us5.datadoghq.com"
-          # - name: HOST_IP
-          #   valueFrom:
-          #     fieldRef:
-          #       fieldPath: status.hostIP
-          # - name: OTEL_EXPORTER_OTLP_ENDPOINT
-          #   value: "http://$(HOST_IP):4317" # sends to gRPC receiver on port 4317
+          - name: HOST_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.hostIP
           - name: OTEL_EXPORTER_OTLP_ENDPOINT
-            value: "otel-collector-opentelemetry-collector:4317" # sends to gRPC receiver on port 4317
+            value: "$(HOST_IP):4317" # sends to gRPC receiver on port 4317
+          # - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          #   value: "splunk-otel-collector-service:4317" # sends to gRPC receiver on port 4317
         resources:
           requests:
             memory: "32Mi"
