@@ -15,8 +15,10 @@ import (
 
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 )
 
+var tracer trace.Tracer
 var _ pb.CalculatorServer = (*Server)(nil)
 
 type Server struct {
@@ -50,7 +52,7 @@ func (s *Server) Calculate(ctx context.Context, r *pb.BinaryOperation) (*pb.Calc
 }
 
 func add(ctx context.Context, r *pb.BinaryOperation) (*pb.CalculationResult, error) {
-	tracer := otel.GetTracerProvider().Tracer("tracer")
+	// tracer := otel.GetTracerProvider().Tracer()
 	_, span := tracer.Start(ctx, "add")
 	defer span.End()
 
@@ -58,7 +60,7 @@ func add(ctx context.Context, r *pb.BinaryOperation) (*pb.CalculationResult, err
 }
 
 func subtract(ctx context.Context, r *pb.BinaryOperation) (*pb.CalculationResult, error) {
-	tracer := otel.GetTracerProvider().Tracer("tracer")
+	// tracer := otel.GetTracerProvider().Tracer("tracer")
 	_, span := tracer.Start(ctx, "subtract")
 	defer span.End()
 
@@ -66,7 +68,7 @@ func subtract(ctx context.Context, r *pb.BinaryOperation) (*pb.CalculationResult
 }
 
 func multiply(ctx context.Context, r *pb.BinaryOperation) (*pb.CalculationResult, error) {
-	tracer := otel.GetTracerProvider().Tracer("tracer")
+	// tracer := otel.GetTracerProvider().Tracer("tracer")
 	_, span := tracer.Start(ctx, "multiply")
 	defer span.End()
 
@@ -77,7 +79,7 @@ func multiply(ctx context.Context, r *pb.BinaryOperation) (*pb.CalculationResult
 }
 
 func divide(ctx context.Context, r *pb.BinaryOperation) (*pb.CalculationResult, error) {
-	tracer := otel.GetTracerProvider().Tracer("tracer")
+	// tracer := otel.GetTracerProvider().Tracer("tracer")
 	_, span := tracer.Start(ctx, "divide")
 	defer span.End()
 
@@ -90,21 +92,40 @@ func divide(ctx context.Context, r *pb.BinaryOperation) (*pb.CalculationResult, 
 }
 
 func main() {
-	tracerProvider, err := config.Init()
+	// tracerProvider, err := config.Init()
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// defer func() {
+	// 	if err := tracerProvider.Shutdown(context.Background()); err != nil {
+	// 		log.Printf("Error shutting down tracer provider: %v", err)
+	// 	} 
+	// }()
+
+	// Setup Tracing
+	otlpEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	log.Printf("OTLP Endpoint: %s", otlpEndpoint)
+
+	ctx := context.Background()
+	exporter, err := config.NewTraceExporter(ctx, otlpEndpoint)
+
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to init trace exporter: %v", err)
 	}
-	defer func() {
-		if err := tracerProvider.Shutdown(context.Background()); err != nil {
-			log.Printf("Error shutting down tracer provider: %v", err)
-		} 
-	}()
+
+	provider := config.NewTraceProvider(exporter)
+
+	defer func() { _ = provider.Shutdown(ctx) }()
+
+	otel.SetTracerProvider(provider)
+	tracer = provider.Tracer("Calculator")
 
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
+	// Setup gRPC Serving
 	grpcEndpoint := fmt.Sprintf(":%s", port)
 	log.Printf("gRPC endpoint [%s]", grpcEndpoint)
 
