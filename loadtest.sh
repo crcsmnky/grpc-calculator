@@ -10,7 +10,7 @@ for((count=0; count<50; count++)); do
 
     result=$(grpcurl -proto proto/calculator.proto -plaintext \
       -d '{"first_operand":"'$rando'", "second_operand":"2.0", "operation":"'$op'"}' \
-      35.222.217.215:3000 Calculator.Calculate | jq '.result')
+      35.235.87.165:3000 Calculator.Calculate | jq '.result')
 
     echo "$count: $rando $op 2.0 = $result"
     sleep 2
